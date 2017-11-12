@@ -9,6 +9,9 @@ import android.content.Context;
 import android.util.Log;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.UUID;
 
 /**
@@ -24,10 +27,13 @@ public class BluetoothConnectionService {
             UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
     private AcceptThread mInsecureAcceptThread;
+
     private ConnectThread mConnectThread;
     private BluetoothDevice mmDevice;
     private UUID deviceUUID;
     ProgressDialog mProgressDialog;
+
+    private ConnectedThread mConnectedThread;
 
     private final BluetoothAdapter mBluetoothAdapter;
 
@@ -149,6 +155,8 @@ public class BluetoothConnectionService {
         }
     }
 
+
+
     //start the chat service.
     //Start the AcceptThread to begin a session in listening(server) mode.
     //Called by the Activity onResume()
@@ -175,5 +183,93 @@ public class BluetoothConnectionService {
 
         mConnectThread = new ConnectThread(device, uuid);
         mConnectThread.start();
+    }
+
+    //Connection Thread is responsible for maintaining the BT Connection, Sending the data, and
+    //receiving incoming data through input/output streams respectively
+    private class ConnectedThread extends Thread{
+        private final BluetoothSocket mmSocket;
+        private final InputStream mmInStream;
+        private final OutputStream mmOutStream;
+
+        public ConnectedThread(BluetoothSocket socket){
+            Log.d(TAG, "ConnectedThread: Starting");
+
+            mmSocket = socket;
+            InputStream tmpIn = null;
+            OutputStream tmpOut = null;
+
+            //dismiss process dialog when connection is established
+            mProgressDialog.dismiss();
+
+            try {
+                tmpIn = mmSocket.getInputStream();
+                tmpOut = mmSocket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mmInStream = tmpIn;
+            mmOutStream = tmpOut;
+        }
+
+        public void run(){
+            byte[] buffer = new byte[1024]; //buffer store for the stream
+            int bytes; //bytes reutrned from read
+
+            //Keep listening to the InputStream until an Exception Occurs
+            while(true){
+                //Read from the Input Stream
+                try {
+                    bytes = mmInStream.read(buffer);
+                    String incomingMessage = new String(buffer, 0, bytes);
+                    Log.d(TAG, "run: InputStream: " + incomingMessage);
+                } catch (IOException e) {
+                    Log.e(TAG, "run: Error reaading input. " + e.getMessage());
+                    break;
+                }
+            }
+        }
+
+        //Call this from MainActivity to send data to the remote device
+        public void write(byte[] bytes){
+            String text = new String(bytes, Charset.defaultCharset());
+            Log.d(TAG, "write: Wrting to OutputStream: " + text);
+            try {
+                mmOutStream.write(bytes);
+            } catch (IOException e) {
+                Log.e(TAG, "write: Error writing to OutputStream. " + e.getMessage());
+            }
+        }
+
+        //call this from MainActivity to end connection
+        public void cancel(){
+            try {
+                mmSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void connected(BluetoothSocket mmSocket, BluetoothDevice mmDevice){
+        Log.d(TAG, "connected: Starting");
+
+        //Start the thread to manage the connection and to perform transmissions
+        mConnectedThread = new ConnectedThread(mmSocket);
+        mConnectedThread.start();
+    }
+    /*
+    * write() in the ConnectedThread is unsynchronized
+    * @param out The bytes to write
+    * @see ConnectedThread#write(byte[])
+    */
+    public void write(byte[] out){
+        //Create temporary object
+        ConnectedThread r;
+        
+        //Synchronize a copy of the ConnectedThread
+        Log.d(TAG, "write: Write Called.");
+        mConnectedThread.write(out);
     }
 }
