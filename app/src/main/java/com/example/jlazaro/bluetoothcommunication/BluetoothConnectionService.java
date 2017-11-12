@@ -1,6 +1,8 @@
 package com.example.jlazaro.bluetoothcommunication;
 
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
@@ -22,8 +24,13 @@ public class BluetoothConnectionService {
             UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
     private AcceptThread mInsecureAcceptThread;
+    private ConnectThread mConnectThread;
+    private BluetoothDevice mmDevice;
+    private UUID deviceUUID;
+    ProgressDialog mProgressDialog;
 
     private final BluetoothAdapter mBluetoothAdapter;
+
     Context mContext;
 
     public BluetoothConnectionService(Context context) {
@@ -86,5 +93,87 @@ public class BluetoothConnectionService {
             }
 
         }
+    }
+
+    public class ConnectThread extends Thread{
+        private BluetoothSocket mmSocket;
+
+        public ConnectThread(BluetoothDevice device, UUID uuid){
+            Log.d(TAG, "ConnectThread: started");
+            mmDevice = device;
+            deviceUUID = uuid;
+        }
+
+        public void run(){
+            BluetoothSocket tmp = null;
+            Log.i(TAG, "run: mConnectThread");
+
+            //Get a BluetoothSocket for a connection with the
+            //given BluetoothDevice
+            try {
+                Log.d(TAG, "run: Trying to create InsecureRfcommSocket using UUID: " + MY_UUID_INSECURE);
+                tmp = mmDevice.createRfcommSocketToServiceRecord(deviceUUID);
+            } catch (IOException e) {
+                Log.e(TAG, "run: Could not create InsecureRfcommSocket " + e.getMessage());
+            }
+
+            mmSocket = tmp;
+
+            mBluetoothAdapter.cancelDiscovery();
+
+            try {
+                //This is a blocking call and will olnly return on a
+                //successfull connection or an exception
+                mmSocket.connect();
+                Log.d(TAG, "run: Connection Successful");
+            } catch (IOException e) {
+                try {
+                    mmSocket.close();
+                    Log.d(TAG, "run: Closed Socket");
+                } catch (IOException e1) {
+                    Log.e(TAG, "run: Unable to close connection in socket " + e1.getMessage());
+                }
+                Log.d(TAG, "run: Could not connect to UUID: " + MY_UUID_INSECURE);
+            }
+            //In third Tutorial
+            connected(mmSocket,mmDevice);
+        }
+
+        public void cancel(){
+            Log.d(TAG, "cancel: Closing Client Socket");
+            try{
+                mmSocket.close();
+            } catch(IOException e){
+                Log.e(TAG, "cancel: close() of mmSocket in ConnectThread " + e.getMessage() );
+            }
+        }
+    }
+
+    //start the chat service.
+    //Start the AcceptThread to begin a session in listening(server) mode.
+    //Called by the Activity onResume()
+    public synchronized void start(){
+        Log.d(TAG, "start");
+
+        if(mConnectThread != null){
+            mConnectThread.cancel();
+            mConnectThread = null;
+        }
+        if(mInsecureAcceptThread == null){
+            mInsecureAcceptThread = new AcceptThread();
+            mInsecureAcceptThread.start();
+        }
+    }
+
+    //AcceptThread starts and waits for a connection
+    //Then ConnectThread starts and tries to make a connection with the other devices AcceptThread
+    public void startClient(BluetoothDevice device, UUID uuid){
+        Log.d(TAG, "startClient: Started");
+
+        //Initprogress dialog
+        mProgressDialog = ProgressDialog.show(mContext, "Connecting Bluetooth", "Please Wait...", true);
+
+        mConnectThread = new ConnectThread(device, uuid);
+        mConnectThread.start();
     }
 }
