@@ -84,16 +84,18 @@
         android:id="@+id/editText"
         android:layout_width="250dp"
         android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
         android:layout_below="@+id/lvNewDevices"
         android:layout_marginBottom="226dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="1dp"
         android:hint="Enter Text Here"
-        android:layout_alignParentStart="true"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/btnSend"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/lvNewDevices"
-        android:layout_alignParentLeft="true" />
+        app:layout_constraintVertical_bias="0.0"
+        android:layout_marginLeft="16dp" />
 
     <Button
         android:id="@+id/btnSend"
@@ -107,8 +109,25 @@
         android:text="SEND"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toEndOf="@+id/editText"
         app:layout_constraintTop_toBottomOf="@+id/btnONOFF"
+        app:layout_constraintVertical_bias="1.0"
         android:layout_marginRight="57dp" />
+
+    <TextView
+        android:id="@+id/incomingMessage"
+        android:layout_width="374dp"
+        android:layout_height="200dp"
+        android:layout_marginBottom="18dp"
+        android:layout_marginEnd="19dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginTop="8dp"
+        android:text="Incoming Messages"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="w,1:1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/editText" />
 
 </android.support.constraint.ConstraintLayout>

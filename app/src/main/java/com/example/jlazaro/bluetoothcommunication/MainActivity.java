@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -17,6 +18,7 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -35,6 +37,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     ArrayList<BluetoothDevice> mBTDevices = new ArrayList<BluetoothDevice>();
     DeviceListAdapter mDeviceListAdapter;
     ListView lvNewDevices;
+    TextView incomingMessages;
+    StringBuilder messages;
 
     private static final UUID MY_UUID_INSECURE =
             UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
@@ -156,6 +160,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         btnSend = (Button) findViewById(R.id.btnSend);
         etSend = (EditText) findViewById(R.id.editText);
 
+        incomingMessages = (TextView) findViewById(R.id.incomingMessage);
+        messages = new StringBuilder();
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(mReciever, new IntentFilter("incomingMessage"));
+
         //Broadcasts when bond state changes (pairing)
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
         registerReceiver(mBroadcastReciever4, filter);
@@ -184,9 +193,22 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             public void onClick(View view) {
                 byte[] bytes = etSend.getText().toString().getBytes(Charset.defaultCharset());
                 mBluetoothConnection.write(bytes);
+
+                etSend.setText("");
             }
         });
     }
+
+    BroadcastReceiver mReciever = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String text = intent.getStringExtra("theMessage");
+
+            messages.append(text + "\n");
+
+            incomingMessages.setText(messages);
+        }
+    };
 
     //create method for starting connection
     //the connection will fail and app will crash if you haven't paired
@@ -204,20 +226,22 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if(mBluetoothAdapter == null){
             Log.d(TAG, "enableDisableBT: device not capable of Bluetooth");
         }
-        else if(!mBluetoothAdapter.isEnabled()){
-            Log.d(TAG, "enableDisableBT: enabling BT");
-            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivity(enableIntent);
+        else {
+            if(!mBluetoothAdapter.isEnabled()){
+                Log.d(TAG, "enableDisableBT: enabling BT");
+                Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivity(enableIntent);
 
-            IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReciever1, BTIntent);
-        }
-        else if(mBluetoothAdapter.isEnabled()){
-            Log.d(TAG, "enableDisableBT: disabling BT");
-            mBluetoothAdapter.disable();
+                IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+                registerReceiver(mBroadcastReciever1, BTIntent);
+            }
+            if(mBluetoothAdapter.isEnabled()){
+                Log.d(TAG, "enableDisableBT: disabling BT");
+                mBluetoothAdapter.disable();
 
-            IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReciever1, BTIntent);
+                IntentFilter BTIntent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+                registerReceiver(mBroadcastReciever1, BTIntent);
+            }
         }
     }
 
